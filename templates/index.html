@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语词汇挑战</title>
+</head>
+<body>
+    <h1>英语词汇挑战</h1>
+    <!-- 开始游戏按钮 -->
+    <button id="start-btn">开始游戏</button>
+    <!-- 游戏区域，初始隐藏 -->
+    <div id="game" style="display: none;">
+        <h2 id="word"></h2>  <!-- 显示当前单词 -->
+        <div id="options"></div>  <!-- 显示选项按钮 -->
+        <p id="result"></p>  <!-- 显示答题结果（正确/错误） -->
+        <p>得分: <span id="score">0</span>/10</p>  <!-- 显示当前得分 -->
+    </div>
+
+    <script>
+        // 初始化变量
+        let score = 0;  // 用户得分
+        let currentQuestion = 0;  // 当前题目序号
+        const totalQuestions = 10;  // 总题数
+
+        // 监听“开始游戏”按钮的点击事件
+        document.getElementById('start-btn').addEventListener('click', startGame);
+
+        // 开始游戏
+        function startGame() {
+            // 隐藏“开始游戏”按钮
+            document.getElementById('start-btn').style.display = 'none';
+            // 显示游戏区域
+            document.getElementById('game').style.display = 'block';
+            // 获取第一道题目
+            fetchQuestion();
+        }
+
+        // 获取题目
+        function fetchQuestion() {
+            // 向后端发送GET请求，获取随机题目
+            fetch('/get_question')
+                .then(response => response.json())  // 解析JSON响应
+                .then(data => {
+                    // 显示当前单词
+                    document.getElementById('word').innerText = data.word;
+                    // 获取选项容器
+                    const optionsDiv = document.getElementById('options');
+                    // 清空之前的选项
+                    optionsDiv.innerHTML = '';
+                    // 遍历选项，创建按钮
+                    data.options.forEach(option => {
+                        const button = document.createElement('button');
+                        button.innerText = option;  // 设置按钮文本
+                        // 监听按钮点击事件，检查答案
+                        button.addEventListener('click', () => checkAnswer(option, data.correct_answer));
+                        optionsDiv.appendChild(button);  // 将按钮添加到选项容器
+                    });
+                });
+        }
+
+        // 检查答案
+        function checkAnswer(userAnswer, correctAnswer) {
+            // 向后端发送POST请求，检查答案
+            fetch('/check_answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    answer: userAnswer,  // 用户选择的答案
+                    correct_answer: correctAnswer  // 正确答案
+                })
+            })
+            .then(response => response.json())  // 解析JSON响应
+            .then(data => {
+                // 如果答案正确
+                if (data.is_correct) {
+                    score++;  // 增加得分
+                    document.getElementById('result').innerText = '正确！';
+                } else {
+                    document.getElementById('result').innerText = '错误！';
+                }
+                // 更新得分显示
+                document.getElementById('score').innerText = score;
+                // 增加当前题目序号
+                currentQuestion++;
+                // 如果未答完10题，继续获取下一题
+                if (currentQuestion < totalQuestions) {
+                    fetchQuestion();
+                } else {
+                    // 否则，结束游戏
+                    endGame();
+                }
+            });
+        }
+
+        // 结束游戏
+        function endGame() {
+            // 显示最终得分
+            document.getElementById('game').innerHTML = `<h2>游戏结束！你的得分是 ${score}/${totalQuestions}</h2>`;
+        }
+    </script>
+</body>
+</html>
